@@ -17,53 +17,60 @@
     <script src="https://cdn.jsdelivr.net/npm/cal-heatmap/cal-heatmap.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const baseUrl = window.location.origin; // 获取当前页面的根URL
+            const baseUrl = window.location.origin;
         
             const cal = new CalHeatMap();
             cal.init({
                 itemSelector: "#cal-heatmap",
                 domain: "month",
                 subDomain: "day",
-                data: baseUrl + "/api/database", // URL pointing to your serverless function
-                start: new Date(new Date().getFullYear(), new Date().getMonth() - 5),
-                cellSize: 10,
+                data: baseUrl + "/api/database",
+                start: new Date(new Date().getFullYear(), new Date().getMonth() - 5), // 显示最近 6 个月
+                cellSize: 12, //稍微调大一点格子
+                cellPadding: 2,
                 range: 6,
                 tooltip: true,
                 nextSelector: "#next",
                 previousSelector: "#previous",
-                considerMissingDataAsZero: false,
-                legend: [1], // Legend for non-empty values
+                considerMissingDataAsZero: true, // 没有数据的日子算 0
+                
+                // 🔥 核心修改：定义字数的分级阈值
+                // 意思是：>0变色, >500更深, >1000更深, >2000最深
+                legend: [1, 500, 1000, 2000], 
+                
                 legendColors: {
-                    min: "#ebedf0",
-                    max: "#7bc96f",
+                    min: "#ebedf0", // 空白日子的颜色
+                    max: "#216e39", // 字数最多时的颜色 (Github Green)
                     empty: "#ebedf0"
                 },
+                
+                // 鼠标悬停显示的文字
                 subDomainTitleFormat: {
-                    empty: "Undo on {date}", // Display only the date for empty data cells
-                    filled: "Complete on {date}" // Custom format to show percentage
+                    empty: "{date}: 摸鱼了 (0字)",
+                    filled: "{date}: 输出了 {count} 字" 
                 },
+                
+                // 处理后端返回的数据
                 afterLoadData: function(data) {
-                    if (!data) {
-                        console.error('No data received');
-                        return {};
-                    }
-            
+                    if (!data) return {};
                     var result = {};
                     data.forEach(function(item) {
+                        // 转换时间戳 (秒)
                         var date = new Date(item.date).getTime() / 1000;
-                        // Set 1 for any non-zero value to utilize the legend [1]
-                        result[date] = item.isChecked ? 1 : 0;
+                        // 直接存入字数
+                        result[date] = item.count;
                     });
                     return result;
                 }
             });
 
-            // 设置定时器每30秒刷新数据
+            // 每 60 秒刷新一次
             setInterval(function() {
-                cal.update(baseUrl + "/api/database"); // 更新为指向无服务器函数的URL
-            }, 30000); // 每30秒刷新一次
+                cal.update(baseUrl + "/api/database");
+            }, 60000);
         });
     </script>
             
 </body>
 </html>
+
