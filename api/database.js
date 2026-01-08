@@ -3,9 +3,10 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 export default async (req, res) => {
+    // ⚠️ 注意：请确保 Vercel 环境变量里的名字也是 ENV_NOTION_TOKEN 和 ENV_DATABASE_ID
+    // 如果你在 Vercel 里填的是 NOTION_TOKEN，请把下面改成 process.env.NOTION_TOKEN
     const token = process.env.ENV_NOTION_TOKEN;
     const databaseId = process.env.ENV_DATABASE_ID;
-    // 这里我们复用这个环境变量名，但实际上填的是你的 "Word Count" 属性名
     const propertyName = process.env.ENV_CHECKBOX_PROPERTY_NAME; 
 
     try {
@@ -13,11 +14,10 @@ export default async (req, res) => {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`,
-                'Notion-Version': '2022-06-28', // 建议升级一下 API 版本
+                'Notion-Version': '2022-06-28',
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                // 过滤掉没有日期的条目，减少数据量
                 filter: {
                     property: "Date",
                     date: {
@@ -26,19 +26,28 @@ export default async (req, res) => {
                 }
             })
         });
+        
         const data = await response.json();
 
-        // 🔥 新增这行调试代码
-        console.log("Notion返回的第一条数据:", JSON.stringify(data.results[0]?.properties, null, 2)); 
+        // 调试日志
+        console.log("Notion API 状态码:", response.status);
+        if (data.results && data.results.length > 0) {
+             console.log("第一条数据示例:", JSON.stringify(data.results[0].properties, null, 2));
+        } else {
+             console.log("⚠️ Notion 返回了空数组，可能是 DatabaseID 错或者没写日记");
+        }
 
-        if (!response.ok) {
-
+        // --- 修复点在这里：之前这里有两个 if，现在删掉了一个 ---
         if (!response.ok) {
             throw new Error(`Notion API error: ${response.status} ${JSON.stringify(data)}`);
         }
 
         const processedData = processData(data.results, propertyName);
+        
+        // 设置缓存控制，避免 Vercel 频繁请求 (可选)
+        res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate');
         res.json(processedData);
+
     } catch (error) {
         console.error("Error processing request:", error);
         res.status(500).json({ error: error.message });
@@ -49,14 +58,12 @@ const processData = (data, propertyName) => {
     const dataMap = new Map();
 
     data.forEach(item => {
-        // 确保有 Date 属性，且有我们要读的 Word Count 属性
         if (item.properties.Date && item.properties.Date.date && item.properties[propertyName]) {
-            const dateStr = item.properties.Date.date.start; // 直接拿 YYYY-MM-DD
+            const dateStr = item.properties.Date.date.start;
             
-            // 核心修改：读取 number 属性，如果没有值则默认为 0
+            // 读取数字属性
             const count = item.properties[propertyName].number || 0;
             
-            // 如果同一天有多条日记，把字数加起来
             if (dataMap.has(dateStr)) {
                 dataMap.set(dateStr, dataMap.get(dateStr) + count);
             } else {
@@ -65,7 +72,5 @@ const processData = (data, propertyName) => {
         }
     });
 
-    // 返回格式：{ date: "2026-01-06", count: 1071 }
     return Array.from(dataMap).map(([date, count]) => ({ date, count }));
 };
-
