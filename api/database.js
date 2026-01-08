@@ -28,6 +28,11 @@ export default async (req, res) => {
         });
         const data = await response.json();
 
+        // 🔥 新增这行调试代码
+        console.log("Notion返回的第一条数据:", JSON.stringify(data.results[0]?.properties, null, 2)); 
+
+        if (!response.ok) {
+
         if (!response.ok) {
             throw new Error(`Notion API error: ${response.status} ${JSON.stringify(data)}`);
         }
@@ -63,3 +68,4 @@ const processData = (data, propertyName) => {
     // 返回格式：{ date: "2026-01-06", count: 1071 }
     return Array.from(dataMap).map(([date, count]) => ({ date, count }));
 };
+
