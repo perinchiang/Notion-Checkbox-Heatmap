@@ -27,7 +27,7 @@ export default async (req, res) => {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    // 3. 关键修改：只筛选 Date 在 6 个月及其之后的数据
+                    // 3. 关键修改：只筛选 Date 在 12 个月及其之后的数据
                     filter: {
                         property: "Date",
                         date: {
@@ -95,4 +95,5 @@ const processData = (data, propertyName) => {
 
     return Array.from(dataMap).map(([date, count]) => ({ date, count }));
 };
+
 
