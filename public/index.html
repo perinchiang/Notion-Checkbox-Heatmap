@@ -6,8 +6,31 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cal-heatmap/cal-heatmap.css" />
     <style>
         body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
+            /* 1. 设置透明背景，完美融入 Notion */
+            background-color: transparent; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        
+        #cal-heatmap {
+            /* 2. 移除多余的边距，更紧凑 */
+            margin: auto;
+        }
+
+        /* 3. 修改月份和星期标签的颜色为 Notion 浅灰色 */
+        .graph-label {
+            fill: #999999 !important;
+            font-size: 10px;
+        }
+        
+        /* 4. 隐藏自带的那个标题，更简洁 */
+        .graph-subdomain-group rect {
+            shape-rendering: geometricPrecision; /* 让圆角更圆润 */
         }
     </style>
 </head>
@@ -22,76 +45,65 @@
         document.addEventListener('DOMContentLoaded', function() {
             const baseUrl = window.location.origin;
             
-            // --- 💡 自动计算起始日期逻辑 ---
-            // 获取当前时间
+            // 自动计算起始日期：显示最近 6 个月（包含本月）
             var now = new Date();
-            // 复制一份时间对象用来做计算
             var startDate = new Date(now);
-            // 往前推 5 个月 (加上本月就是显示 6 个月)
             startDate.setMonth(now.getMonth() - 5);
 
             // 初始化热力图
             const cal = new CalHeatMap();
+            
+            // --- 核心配置修改 ---
             cal.init({
                 itemSelector: "#cal-heatmap",
-                domain: "month",      // 大格子是月份
-                subDomain: "day",     // 小格子是天
+                domain: "month",
+                subDomain: "day",
                 
-                // --- 关键配置 1: 动态日期 ---
-                start: startDate,     // 动态起始日期
-                range: 6,             // 显示 6 个月
+                start: startDate,
+                range: 6,
                 
-                // --- 关键配置 2: 数据源 ---
                 data: baseUrl + "/api/database",
-                dataType: "json",     // 显式指定数据类型
+                dataType: "json",
 
-                cellSize: 12,
-                cellPadding: 2,
-                domainGutter: 10,     // 月份之间的间距
+                // ✨ 美化部分：模仿 Notion 原生风格 ✨
+                cellSize: 13,        // 格子稍微大一点
+                cellPadding: 3,      // 格子间距
+                domainGutter: 4,     // 月份之间挨得紧一点
+                cellRadius: 3,       // ✅ 圆角矩形（0是直角，6是圆形）
                 
-                // --- 关键配置 3: 颜色阈值 ---
-                // 1字变浅绿，200字变中绿，500字变深绿，1000字变最深绿
-                legend: [1, 200, 500, 1000],
+                // 字体设置
+                fontFamily: "-apple-system, sans-serif",
+
+                // 颜色阈值：根据你的字数来定 (比如 100字, 300字, 600字, 1000字)
+                legend: [100, 300, 600, 1000],
                 
-                // 自定义颜色 (类似 GitHub 风格)
+                // ✅ 颜色方案：Notion 黑白灰性冷淡风
                 legendColors: {
-                    min: "#9be9a8",   // <--- 修改这里！把之前的灰色改成浅绿色
-                    max: "#216e39",   // 深绿色
-                    empty: "#ebedf0"  // 没数据的日子显示灰色
+                    min: "#E3E2E0",   // 浅灰 (少量)
+                    max: "#37352F",   // 深黑 (大量)
+                    empty: "#F7F6F3"  // 极浅灰 (未打卡)
                 },
 
-                // 鼠标悬停提示
                 tooltip: true,
                 subDomainTitleFormat: {
                     empty: "{date}: 摸鱼 (0字)",
                     filled: "{date}: {count} 字"
                 },
                 
-                // 数据加载后的处理 (将 YYYY-MM-DD 转为秒级时间戳)
+                // 数据处理：转换日期格式
                 afterLoadData: function(data) {
-                    // 如果后端返回空，直接返回空对象
                     if (!data || data.length === 0) {
-                        console.warn("后端返回数据为空");
                         return {};
                     }
-
                     var result = {};
                     data.forEach(function(item) {
-                        // 将后端返回的日期字符串 (2026-01-01) 转换为秒级时间戳
                         var dateTimestamp = Math.floor(new Date(item.date).getTime() / 1000);
                         result[dateTimestamp] = item.count;
                     });
                     return result;
                 }
             });
-
-            // 每 60 秒自动刷新一次数据
-            setInterval(function() {
-                cal.update(baseUrl + "/api/database");
-            }, 60000);
         });
     </script>
 </body>
 </html>
-
-
