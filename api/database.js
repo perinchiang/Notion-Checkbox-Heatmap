@@ -7,9 +7,9 @@ export default async (req, res) => {
     const databaseId = process.env.ENV_DATABASE_ID;
     const propertyName = process.env.ENV_CHECKBOX_PROPERTY_NAME;
 
-    // 1. 计算 6 个月前的日期 (格式 YYYY-MM-DD)
+    // 1. 计算 12 个月前的日期 (格式 YYYY-MM-DD)
     const startDate = new Date();
-    startDate.setMonth(startDate.getMonth() - 6);
+    startDate.setMonth(startDate.getMonth() - 12);
     const dateStr = startDate.toISOString().split('T')[0];
 
     try {
@@ -95,3 +95,4 @@ const processData = (data, propertyName) => {
 
     return Array.from(dataMap).map(([date, count]) => ({ date, count }));
 };
+
